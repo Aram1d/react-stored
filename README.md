@@ -36,7 +36,7 @@ Say you have the two following components far away from one another in the tree 
 import React from "react";
 import { createStore } from "react-stored";
 
-const {useStore} = createStore({
+export const {useStore} = createStore({
   keyPrefix: "your_prefix",
   schemas: [
     {
@@ -71,7 +71,7 @@ function FirstComponent() {
 
 ```javascript
 import React from "react";
-import { useStore } from "react-stored";
+import { useStore } from "./FirstComponentFile";
 
 function SecondComponent() {
   const [counter, setCounter] = useStore("counter");
