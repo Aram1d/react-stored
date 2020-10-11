@@ -1,4 +1,4 @@
-# /!\ Important : This doc is relevant for up to version 1.4.6. New doc coming soon.
+# Documentation for version 2.0.3.
 
 ## react-stored
 
@@ -16,9 +16,8 @@ Ever dreamed of such of feature but couldn't come up with a 100% satisfying solu
 6. with **Keys prefixes** so that no key name can enter in conflict with anoter having same name from another program. 
 7. with **no unnecessary** rerender, ever,
 8. with **SSR** capacities (see [FAQ](#what-if-you-are-rendering-server-side-)),
-9. with **simplicity** and **cool local / global configuration** options,
-10. with **zero dependency** (other than [React](https://reactjs.org/) of course),
-11. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
+9. with **zero dependency** (other than [React](https://reactjs.org/) of course),
+10. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
 
 [Go to FAQ](#faq)
 
@@ -34,7 +33,29 @@ Say you have the two following components far away from one another in the tree 
 
 ```javascript
 import React from "react";
-import { useStore } from "react-stored";
+import { createStore } from "react-stored";
+
+const {useStore} = createStore({
+  keyPrefix: "your_prefix",
+  schemas: [
+    {
+      key: "counter",
+      init:  0,
+      assert: counter => counter < 100
+    }
+    {
+      key: "a_key_name"
+      init: null,
+      assert: (data) => typeof === "string"
+    },
+    {
+      key: "a_key_name"
+      init: null,
+      assert: ajv.compile(ajv_schema_here),
+    }
+  ]
+  
+})
 
 function FirstComponent() {
   const [counter, setCounter] = useStore("counter", 0);
