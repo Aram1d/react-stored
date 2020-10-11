@@ -9,15 +9,16 @@ Ever dreamed of such of feature but couldn't come up with a 100% satisfying solu
 ### It is designed to :
 
 1. provide you with a **reliable key-based** `useState`-like feature called `useStore`,
-2. with **auto-sync** with other `useStore` calls sharing the same key,
+2. with **auto-sync** with other `useStore` calls sharing the same key (everywhere in your React App),
 3. **without** context,
 4. with **persistence** across page reloads and browser sessions ([or not](#faq)),
 5. with **configurable safety asserts** on deserialization and **default fallbacks**,
-6. with **no unnecessary** rerender, ever,
-7. with **SSR** capacities (see [FAQ](#what-if-you-are-rendering-server-side-)),
-8. with **simplicity** and **cool local / global configuration** options,
-9. with **zero dependency** (other than [React](https://reactjs.org/) of course),
-10. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
+6. with **Keys prefixes** so that no key name can enter in conflict with anoter having same name from another program. 
+7. with **no unnecessary** rerender, ever,
+8. with **SSR** capacities (see [FAQ](#what-if-you-are-rendering-server-side-)),
+9. with **simplicity** and **cool local / global configuration** options,
+10. with **zero dependency** (other than [React](https://reactjs.org/) of course),
+11. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
 
 [Go to FAQ](#faq)
 
@@ -67,20 +68,40 @@ The second argument to `useStore`, the number `0` in this case, represents the d
 
 # Reference
 
-## 1- The `useStore` hook
+## 0- Imports:
+import { createStore } from "react-stored"
+
+## 1- The `createStore()` function: 
+This function has to be called first: it's role is to take your specific asserts, key_prefix, serialize and deserialize functions.
+
+createStore function takes a single object arguments with the following properties:
+- `storage`: storage (optional) : specify which storage type to use: the localStorage is used by default, and an error is thrown if unsupported by your browser.
+- `keyPrefix`: string (optional) : specify a prefix that will be prepended to all keys you will declare and use after the creation of your store. "" by default.
+- `serialize`: (value: any): string : specify a function that will be used to serialize objects (make a JSON string from your object) JSON.Stringify by default.
+- `deserialize`: (raw: string): any : specify a function that will be used to deserialize your stored data. value JSON.parse by default.
+- `schemas`: Array<Schema> : an Array of object (one object per stored Key), with the following properties:
+    - `key`: string : Key name
+    - `init` : The value affected by default to the store and returned by `useStore` when no previous save is found. This could be any JSON value (and [even more](#what-about-storing-non-json-values-like-dates-maps-and-simple-functions-)).
+    - `assert` : (value: T) => boolean A function checking the validity of your data according to a rule and returning a boolean: On initial render, [or when any of `useStore`'s parameters changes](#identity-and-hook-optimization), the previous save passes through this function and has to return `true`. If it returns `false` or throws an error, `defaultValue` will be used and overwrite the save. This can be very handy, for example to prevent the hydration of `useStore` with ill-formed or outdated JSON. I would usually use [ajv](https://www.npmjs.com/package/ajv) in places like these.
+
+  
+ the createStore return and object containing a `useStore` , `readStore` , `addSchema` and `setOptions` function.
+
+
+
+## 2- The `useStore` hook
 
 This is the cornerstone of this package. It 'connects' you to a specific store, identified by key, and returns the value at that location as well as an update function. Its overall feel mimics `useState`. It also listens to any outside change, and rerenders accordingly to keep all parts of your UI in sync.
 
 It can take up to 3 arguments (**only the key is required**) :
 
 ```javascript
-const [value, setValue] = useStore(key, defaultValue, assertFunction);
+const [value, setValue] = useStore(key);
 ```
 
 - `key` : Any string.
-- `defaultValue` (optional) : The value affected by default to the store and returned by `useStore` when no previous save is found. This could be any JSON value (and [even more](#what-about-storing-non-json-values-like-dates-maps-and-simple-functions-)).
-- `assertFunction` (optional) : On initial render, [or when any of `useStore`'s parameters changes](#identity-and-hook-optimization), the previous save passes through this function and has to return `true`. If it returns `false` or throws an error, `defaultValue` will be used and overwrite the save. This can be very handy, for example to prevent the hydration of `useStore` with ill-formed or outdated JSON. I would usually use [ajv](https://www.npmjs.com/package/ajv) in places like these.
-
+- `defaultValue` (optional) : 
+- `assertFunction` (optional) : 
 ### Identity and hook optimization
 
 Just like most hooks, `useStore` relies on **object identity** to optimize internal recomputations. If your `defaultValue` is **an object or an array**, please use [`useRef`](https://reactjs.org/docs/hooks-reference.html#useref) or [`useMemo`](https://reactjs.org/docs/hooks-reference.html#usememo) to keep the same reference as long as possible :
@@ -121,7 +142,7 @@ const setCounter = useStore('counter')[1]
 
 The **identity** of this update function is preserved as long as the `key` stays the same.
 
-## 2- The `addSchema` function
+## 3- The `addSchema` function
 
 This configuration function allows you to set _default_- default values and _default_ assert functions to certain keys or key patterns outside of your React tree, typically in `index.js` before your `ReactDOM.render`. **If you don't rely on props to set default values and assert functions, you shouldn't set them at component-level and `addSchema` should be your primary configuration choice**.
 
@@ -151,42 +172,6 @@ addSchema(/array-[0-9A-F]{2}/, [], isValidArray);
 // Any invocation from 'array-00' to 'array-FF' will be initialized with an
 // empty array. Any previous save should be an array of strings, otherwise
 // it will be overwritten with an empty array.
-
-ReactDOM.render(<App />, document.getElementById("root"));
-```
-
-## 3- The `config` function
-
-With this function, you can tweak some general stuff. It has to be called outside of the React structure, before any `useStore` call, so usually somewhere in your `index.js` before your `ReactDOM.render`.
-
-```javascript
-import React from "react";
-import ReactDOM from "react-dom";
-import { config } from "react-stored";
-import App from "./App";
-
-// Below are the DEFAULT settings, it is pointless
-// to set them explicitly to these values :
-
-config({
-  // IMPORTANT : A seemless prefix to ALL your keys, this has to be specific
-  // to your app :
-  keyPrefix: "",
-
-  // The storage to be used (could be replaced with an in-memory alternative,
-  // sessionStorage, a cookie-based storage, etc. See FAQ) :
-  storage: window.localStorage,
-
-  // When true, real-time auto-sync is extended across all browser tabs
-  // sharing the same origin :
-  crossTab: false,
-
-  // A function that should transform JSON into a string :
-  serialize: JSON.stringify,
-
-  // A function that should transform a string into JSON :
-  deserialize: JSON.parse
-});
 
 ReactDOM.render(<App />, document.getElementById("root"));
 ```
