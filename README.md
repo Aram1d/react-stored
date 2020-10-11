@@ -16,8 +16,9 @@ Ever dreamed of such of feature but couldn't come up with a 100% satisfying solu
 6. with **Keys prefixes** so that no key name can enter in conflict with anoter having same name from another program. 
 7. with **no unnecessary** rerender, ever,
 8. with **SSR** capacities (see [FAQ](#what-if-you-are-rendering-server-side-)),
-9. with **zero dependency** (other than [React](https://reactjs.org/) of course),
-10. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
+9. with **simplicity** and cool **global configuration** options,
+10. with **zero dependency** (other than [React](https://reactjs.org/) of course),
+11. with **very little** extra bundle size (+ 2.6 KB (4 times less than this very readme))
 
 [Go to FAQ](#faq)
 
@@ -41,15 +42,15 @@ const {useStore} = createStore({
     {
       key: "counter",
       init:  0,
-      assert: counter => counter < 100
+      assert: counter => counter < 100,
     }
     {
-      key: "a_key_name"
+      key: "a_key_name",
       init: null,
-      assert: (data) => typeof === "string"
+      assert: (data) => typeof === "string",
     },
     {
-      key: "a_key_name"
+      key: "a_key_name",
       init: null,
       assert: ajv.compile(ajv_schema_here),
     }
@@ -58,7 +59,7 @@ const {useStore} = createStore({
 })
 
 function FirstComponent() {
-  const [counter, setCounter] = useStore("counter", 0);
+  const [counter, setCounter] = useStore("counter");
   return (
     <>
       <h1>Counter : {counter}</h1>
@@ -73,7 +74,7 @@ import React from "react";
 import { useStore } from "react-stored";
 
 function SecondComponent() {
-  const [counter, setCounter] = useStore("counter", 0);
+  const [counter, setCounter] = useStore("counter");
   return (
     <>
       <h1>Counter : {counter}</h1>
@@ -114,34 +115,15 @@ createStore function takes a single object arguments with the following properti
 
 This is the cornerstone of this package. It 'connects' you to a specific store, identified by key, and returns the value at that location as well as an update function. Its overall feel mimics `useState`. It also listens to any outside change, and rerenders accordingly to keep all parts of your UI in sync.
 
-It can take up to 3 arguments (**only the key is required**) :
+It only take up 1 argument which is one of the keys you defined in the schema passed to the createStore function.
 
 ```javascript
 const [value, setValue] = useStore(key);
 ```
 
 - `key` : Any string.
-- `defaultValue` (optional) : 
-- `assertFunction` (optional) : 
-### Identity and hook optimization
 
-Just like most hooks, `useStore` relies on **object identity** to optimize internal recomputations. If your `defaultValue` is **an object or an array**, please use [`useRef`](https://reactjs.org/docs/hooks-reference.html#useref) or [`useMemo`](https://reactjs.org/docs/hooks-reference.html#usememo) to keep the same reference as long as possible :
 
-```javascript
-const init = useMemo(() => ({ x: props.x, y: 0 }), [props.x]);
-const [coord, setCoord] = useStore("coord", init);
-```
-
-Similarly, use [`useCallback`](https://reactjs.org/docs/hooks-reference.html#usecallback) for the assert function :
-
-```javascript
-const assert = useCallback(state => ajv.validate(props.model, state), [
-  props.model
-]);
-const [state, setState] = useStore("my-state", null, assert);
-```
-
-**Better (!)** : Whenever possible, set your `defaultValue` and `assertFunction` _outside_ the render tree using [`addSchema`](#2--the-addschema-function). This way, you don't have to worry about reference optimization. Plus, the separation between configuration and usage makes your code cleaner.
 
 ### The update function
 
